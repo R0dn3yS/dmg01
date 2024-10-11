@@ -8,7 +8,7 @@ void stack_push(u8 data) {
 }
 
 void stack_push16(u16 data) {
-  stack_push((data << 8) & 0xFF);
+  stack_push((data >> 8) & 0xFF);
   stack_push(data & 0xFF);
 }
 
