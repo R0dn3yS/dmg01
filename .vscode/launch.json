@@ -2,15 +2,15 @@
   "configurations": [
     {
       "name": "(gdb) Launch",
-      "type": "cppdbg",
+      "type": "lldb",
       "request": "launch",
       "program": "${workspaceFolder}/src/build/gbemu/gbemu",
-      "args": ["~/Coding/C/dmg01/roms/cpu_instrs.gb"],
+      "args": ["roms/mem_timing.gb"],
       "stopAtEntry": false,
       "cwd": "${workspaceFolder}",
       "environment": [],
       "externalConsole": false,
-      "MIMode": "gdb",
+      "MIMode": "lldb",
       "setupCommands": [
         {
           "description": "Enable pretty-printing for gdb",

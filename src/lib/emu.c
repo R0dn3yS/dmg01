@@ -46,8 +46,6 @@ int emu_run(int argc, char **argv) {
 
   cpu_init();
 
-  cpu_init();
-
   ctx.running = true;
   ctx.paused = false;
   ctx.ticks = 0;

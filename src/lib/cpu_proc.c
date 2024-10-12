@@ -36,11 +36,15 @@ static void proc_di(cpu_context *ctx) {
   ctx->int_master_enabled = false;
 }
 
+static bool is_16_bit(reg_type rt) {
+  return rt >= RT_AF;
+}
+
 static void proc_ld(cpu_context *ctx) {
   if (ctx->dest_is_mem) {
     // LD (BC), A for instance...
 
-    if (ctx->cur_inst->reg_2 >= RT_AF) {
+    if (is_16_bit(ctx->cur_inst->reg_2)) {
       // if 16 bit register
       emu_cycles(1);
       bus_write16(ctx->mem_dest, ctx->fetched_data);
@@ -61,7 +65,8 @@ static void proc_ld(cpu_context *ctx) {
       (ctx->fetched_data & 0xFF) >= 0x100;
 
     cpu_set_flags(ctx, 0, 0, hflag, cflag);
-    cpu_set_reg(ctx->cur_inst->reg_1, cpu_read_reg(ctx->cur_inst->reg_2) + (char)ctx->fetched_data);
+    cpu_set_reg(ctx->cur_inst->reg_1,
+      cpu_read_reg(ctx->cur_inst->reg_2) + (char)ctx->fetched_data);
 
     return;
   } 
@@ -168,15 +173,60 @@ static void proc_pop(cpu_context *ctx) {
 }
 
 static void proc_push(cpu_context *ctx) {
-  u16 hi = (cpu_read_reg(ctx->cur_inst->reg_1) >> 8) && 0xFF;
+  u16 hi = (cpu_read_reg(ctx->cur_inst->reg_1) >> 8) & 0xFF;
   emu_cycles(1);
   stack_push(hi);
 
-  u16 lo = cpu_read_reg(ctx->cur_inst->reg_1) && 0xFF;
+  u16 lo = cpu_read_reg(ctx->cur_inst->reg_1) & 0xFF;
   emu_cycles(1);
   stack_push(lo);
 
   emu_cycles(1);
+}
+
+static void proc_inc(cpu_context *ctx) {
+  u16 val = cpu_read_reg(ctx->cur_inst->reg_1) + 1;
+
+  if (is_16_bit(ctx->cur_inst->reg_1)) {
+    emu_cycles(1);
+  }
+
+  if (ctx->cur_inst->reg_1 == RT_HL && ctx->cur_inst->mode == AM_MR) {
+    val = bus_read(cpu_read_reg(RT_HL)) + 1;
+    val &= 0xFF;
+    bus_write(cpu_read_reg(RT_HL), val);
+  } else {
+    cpu_set_reg(ctx->cur_inst->reg_1, val);
+    val = cpu_read_reg(ctx->cur_inst->reg_1);
+  }
+
+  if ((ctx->cur_opcode & 0x03) == 0x03) {
+    return;
+  }
+
+  cpu_set_flags(ctx, val == 0, 0, (val & 0x0F) == 0, -1);
+}
+
+static void proc_dec(cpu_context *ctx) {
+  u16 val = cpu_read_reg(ctx->cur_inst->reg_1) - 1;
+
+  if (is_16_bit(ctx->cur_inst->reg_1)) {
+    emu_cycles(1);
+  }
+
+  if (ctx->cur_inst->reg_1 == RT_HL && ctx->cur_inst->mode == AM_MR) {
+    val = bus_read(cpu_read_reg(RT_HL)) - 1;
+    bus_write(cpu_read_reg(RT_HL), val);
+  } else {
+    cpu_set_reg(ctx->cur_inst->reg_1, val);
+    val = cpu_read_reg(ctx->cur_inst->reg_1);
+  }
+
+  if ((ctx->cur_opcode & 0x0B) == 0x0B) {
+    return;
+  }
+
+  cpu_set_flags(ctx, val == 0, 1, (val & 0x0F) == 0x0F, -1);
 }
 
 static IN_PROC processors[] = {
@@ -192,6 +242,8 @@ static IN_PROC processors[] = {
   [IN_CALL] = proc_call,
   [IN_RET] = proc_ret,
   [IN_RST] = proc_rst,
+  [IN_DEC] = proc_dec,
+  [IN_INC] = proc_inc,
   [IN_RETI] = proc_reti,
   [IN_XOR] = proc_xor,
 };

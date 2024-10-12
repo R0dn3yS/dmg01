@@ -51,9 +51,10 @@ u8 bus_read(u16 address) {
   } else if (address == 0xFFFF) {
     // CPU Enable Register
     return cpu_get_ie_register();
-  } else {
-    return hram_read(address);
   }
+
+
+  return hram_read(address);
 }
 
 void bus_write(u16 address, u8 value) {
