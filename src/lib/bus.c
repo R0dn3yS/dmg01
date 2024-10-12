@@ -47,9 +47,10 @@ u8 bus_read(u16 address) {
     // I/O Registers
     // TODO
     printf("UNSUPPORTED bus_read(%04X)\n", address);
-    // NO_IMPL
+    NO_IMPL
   } else if (address == 0xFFFF) {
     // CPU Enable Register
+    // TODO
     return cpu_get_ie_register();
   }
 
