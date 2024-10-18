@@ -32,6 +32,76 @@ static void proc_nop(cpu_context *ctx) {
 
 }
 
+reg_type rt_lookup[] = {
+  RT_B,
+  RT_C,
+  RT_D,
+  RT_E,
+  RT_H,
+  RT_L,
+  RT_HL,
+  RT_A
+};
+
+reg_type decode_reg(u8 reg) {
+  if (reg > 0b111) {
+    return RT_NONE;
+  }
+
+  return rt_lookup[reg];
+}
+
+static void proc_cb(cpu_context *ctx) {
+  u8 op = ctx->fetched_data;
+  reg_type reg = decode_reg(op & 0x0b111);
+  u8 bit = (op >> 3) & 0b111;
+  u8 bit_op = (op >> 6) & 0b11;
+  u8 reg_val = cpu_read_reg8(reg);
+
+  emu_cycles(1);
+
+  if (reg == RT_HL) {
+    emu_cycles(2);
+  }
+
+  switch (bit_op) {
+    case 1:
+      // BIT
+      cpu_set_flags(ctx, !(reg_val & (1 << bit)), 0, 1, -1);
+      return;
+
+    case 2:
+      // RST
+      return;
+
+    case 3:
+      // SET
+      return;
+  }
+}
+
+static void proc_and(cpu_context *ctx) {
+  ctx->regs.a &= ctx->fetched_data;
+  cpu_set_flags(ctx, ctx->regs.a == 0, 0, 1, 0);
+}
+
+static void proc_xor(cpu_context *ctx) {
+  ctx->regs.a ^= ctx->fetched_data & 0xFF;
+  cpu_set_flags(ctx, ctx->regs.a == 0, 0, 0, 0);
+}
+
+static void proc_or(cpu_context *ctx) {
+  ctx->regs.a |= ctx->fetched_data & 0xFF;
+  cpu_set_flags(ctx, ctx->regs.a == 0, 0, 0, 0);
+}
+
+static void proc_cp(cpu_context *ctx) {
+  int n = (int)ctx->regs.a - (int)ctx->fetched_data;
+
+  cpu_set_flags(ctx, n == 0, 1,
+    ((int)ctx->regs.a & 0x0F) - ((int)ctx->fetched_data & 0x0F) < 0, n < 0);
+}
+
 static void proc_di(cpu_context *ctx) {
   ctx->int_master_enabled = false;
 }
@@ -320,6 +390,11 @@ static IN_PROC processors[] = {
   [IN_ADC] = proc_adc,
   [IN_SUB] = proc_sub,
   [IN_SBC] = proc_sbc,
+  [IN_AND] = proc_and,
+  [IN_XOR] = proc_xor,
+  [IN_OR] = proc_or,
+  [IN_CP] = proc_cp,
+  [IN_CB] = proc_cb,
   [IN_RETI] = proc_reti,
   [IN_XOR] = proc_xor
 };
